@@ -17,7 +17,7 @@ import requests
 import grequests
 import time
 import locale
-
+from datetime import date
 
 class authHandler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -31,8 +31,8 @@ class authHandler(BaseHTTPRequestHandler):
         wx.CallAfter(pub.sendMessage, 'login', message=str(parts['code'][0]))
     def log_message(self, format, *args):
         return
-    
- 
+
+
 # Create a new frame class, derived from the wxPython Frame.
 class MarketView(wx.Frame):
 
@@ -52,7 +52,7 @@ class MarketView(wx.Frame):
         self.statusbar=self.CreateStatusBar(style=0)
         self.statusbar.SetFieldsCount(2)
         self.statusbar.SetStatusWidths([-2, -1])
-        self.SetStatusText("Please Log in",0)   
+        self.SetStatusText("Please Log in",0)
         sizer = wx.FlexGridSizer(2, 3, 5, 5)
         sizer.Add(self.login)
         sizer.Add(self.regionCombo)
@@ -67,24 +67,24 @@ class MarketView(wx.Frame):
 
     def update_status(self,data,extra1=0):
         self.SetStatusText(data,extra1)
-        
-        
+
+
     def update_regions(self,regions):
         self.regionCombo.Clear()
         for item in regions['items']:
             self.regionCombo.Append(item['name'],item)
-    
+
     def show_dir(self):
         path= os.getcwd()
         dlg = wx.DirDialog(
-            self, "Save file in ...", 
+            self, "Save file in ...",
             style=wx.DD_DEFAULT_STYLE|wx.DD_DIR_MUST_EXIST|wx.DD_CHANGE_DIR
             )
         if dlg.ShowModal() == wx.ID_OK:
             path = dlg.GetPath()
         dlg.Destroy()
         return path
-    
+
     def select_filter_file(self):
         file = 'nofile'
         wildcard="CSV (*.csv)|*.csv"
@@ -94,7 +94,7 @@ class MarketView(wx.Frame):
             file = dlg.GetPath()
         dlg.Destroy()
         return file
-    
+
 
 class MarketModel:
     def __init__(self,settings):
@@ -111,8 +111,8 @@ class MarketModel:
         self.cert_path = os.path.dirname(os.path.abspath(__file__))+os.sep+'cacert.pem'
         self.directory = os.getcwd()
         self.filterfile = 'nofile'
-    
-        
+
+
     def get_region(self,event):
         self.set_status_text("Dump beginning.",0)
         filterlist={}
@@ -129,48 +129,52 @@ class MarketModel:
         startTime=time.time()
         buyUrls=[]
         sellUrls=[]
-        with open(self.directory+'\\orders.csv', 'wb') as csvfile:
-            writer = csv.writer(csvfile,dialect='excel')
-            writer.writerow(['Buy','typeid','volume','issued','duration','Volume Entered','Minimum Volume','range','price','locationid','locationname'])
-            for item in self.marketItems:
-                count+=1
-                wx.Yield()
-                if filterme:
-                    if (int(item['id']) in filterlist):
-                        buyUrls.append(self.currentRegion['marketBuyOrders']['href']+"?type="+item['href'])
-                        sellUrls.append(self.currentRegion['marketSellOrders']['href']+"?type="+item['href'])
-                        batch+=1
-                else:
-                        buyUrls.append(self.currentRegion['marketBuyOrders']['href']+"?type="+item['href'])
-                        sellUrls.append(self.currentRegion['marketSellOrders']['href']+"?type="+item['href'])
-                        batch+=1
-                if (itemCount==count) or (batch==20):
-                    buy=self.get_multiple_endpoint(buyUrls, 'application/vnd.ccp.eve.MarketOrderCollection-v1+json; charset=utf-8')
-                    sell=self.get_multiple_endpoint(sellUrls, 'application/vnd.ccp.eve.MarketOrderCollection-v1+json; charset=utf-8')
-                    batch=0
-                    now=time.time()
-                    sofar=now-startTime
-                    fraction=float(count)/float(itemCount)
-                    total=sofar/fraction
-                    remaining=total-sofar
-                    self.set_status_text("Completion: "+locale.format("%d",count,grouping=True)+'/'+locale.format("%d",itemCount,grouping=True),0)
-                    self.set_status_text(locale.format("%d",sofar,grouping=True)+'/'+locale.format("%d",remaining,grouping=True)+'/'+locale.format("%d",total,grouping=True),1)
-                    wx.Yield()
-                    buyUrls=[]
-                    sellUrls=[]
-                    for buyitem in buy:
-                        writer.writerow([1,buyitem['type']['id'],buyitem['volume'],buyitem['issued'],buyitem['duration'],buyitem['volumeEntered'],buyitem['minVolume'],buyitem['range'],buyitem['price'],buyitem['location']['id'],buyitem['location']['name']])
-                    for sellitem in sell:
-                        writer.writerow([0,sellitem['type']['id'],sellitem['volume'],sellitem['issued'],sellitem['duration'],sellitem['volumeEntered'],1,sellitem['range'],sellitem['price'],sellitem['location']['id'],sellitem['location']['name']])
+        for item in self.marketItems:
+         count+=1
+         wx.Yield()
+         if filterme:
+             if (int(item['id']) in filterlist):
+                 buyUrls.append(self.currentRegion['marketBuyOrders']['href']+"?type="+item['href'])
+                 sellUrls.append(self.currentRegion['marketSellOrders']['href']+"?type="+item['href'])
+                 batch+=1
+         else:
+                 buyUrls.append(self.currentRegion['marketBuyOrders']['href']+"?type="+item['href'])
+                 sellUrls.append(self.currentRegion['marketSellOrders']['href']+"?type="+item['href'])
+                 batch+=1
+         if (itemCount==count) or (batch==20):
+             buy=self.get_multiple_endpoint(buyUrls, 'application/vnd.ccp.eve.MarketOrderCollection-v1+json; charset=utf-8')
+             sell=self.get_multiple_endpoint(sellUrls, 'application/vnd.ccp.eve.MarketOrderCollection-v1+json; charset=utf-8')
+             batch=0
+             now=time.time()
+             sofar=now-startTime
+             fraction=float(count)/float(itemCount)
+             total=sofar/fraction
+             remaining=total-sofar
+             self.set_status_text("Completion: "+locale.format("%d",count,grouping=True)+'/'+locale.format("%d",itemCount,grouping=True),0)
+             self.set_status_text(locale.format("%d",sofar,grouping=True)+'/'+locale.format("%d",remaining,grouping=True)+'/'+locale.format("%d",total,grouping=True),1)
+             wx.Yield()
+             buyUrls=[]
+             sellUrls=[]
+             types=list(set(buy.keys() + sell.keys()))
+             for type in types:
+                with open(self.directory+os.sep+self.currentRegion['name']+'-'+type+'-'+time.strftime("%Y.%m.%d")+' 1947'+'.txt', 'wb') as csvfile:
+                    writer = csv.writer(csvfile,dialect='excel')
+                    writer.writerow(['bid','orderID','typeID','volRemaining','issued','duration','Volume Entered','minVolume','range','price','stationID','regionID','solarSystemID'])
+                    if type in buy:
+                        for buyitem in buy[type]:
+                            writer.writerow(['True',buyitem['id'],buyitem['type']['id'],buyitem['volume'],buyitem['issued'],buyitem['duration'],buyitem['volumeEntered'],buyitem['minVolume'],"-1",buyitem['price'],buyitem['location']['id'],buyitem['location']['name']])
+                    if type in sell:
+                        for sellitem in sell[type]:
+                            writer.writerow(['False',sellitem['id'],sellitem['type']['id'],sellitem['volume'],sellitem['issued'],sellitem['duration'],sellitem['volumeEntered'],1,"-1",sellitem['price'],sellitem['location']['id'],sellitem['location']['name']])
         self.set_status_text("Complete.",0)
         self.set_status_text("",1)
         pub.sendMessage('completedDump',data='done')
-        
-        
+
+
     def get_multiple_endpoint(self,endpoints,accept):
         if self.settings['expires']<time.time():
             self.refresh_tokens()
-        items=[]
+        items={}
         headers = {'Authorization':'Bearer '+ self.settings['accessToken'],
             'Accept':accept,
             'User-Agent':self.settings['USERAGENT']
@@ -179,10 +183,11 @@ class MarketModel:
         responses=grequests.map(rs)
         for response in responses:
             add=response.json()
-            items.extend(add['items'])
+            if len(add['items']):
+                items[str(add['items'][0]['type']['name'])]=add['items']
             response.close()
         return items
-        
+
     def do_login(self,message):
         headers = {'User-Agent':self.settings['USERAGENT']}
         query = {'grant_type':'authorization_code','code':message}
@@ -195,7 +200,7 @@ class MarketModel:
         self.settings['refreshToken']=response['refresh_token']
         self.settings['expires']=time.time()+float(response['expires_in'])-20
         self.load_base_data()
-        
+
     def refresh_tokens(self):
         headers = {'Authorization':'Basic '+ base64.b64encode(self.settings['CLIENTID']+':'+self.settings['SECRET']),'User-Agent':self.settings['USERAGENT']}
         query = {'grant_type':'refresh_token','refresh_token':self.settings['refreshToken']}
@@ -205,7 +210,7 @@ class MarketModel:
         self.settings['refreshToken']=response['refresh_token']
         self.settings['expires']=time.time()+float(response['expires_in'])-20
 
-        
+
     def load_base_data(self):
         headers = {'Authorization':'Bearer '+ self.settings['accessToken'],'User-Agent':self.settings['USERAGENT']}
         self.set_status_text("Loading Regions",0)
@@ -215,9 +220,9 @@ class MarketModel:
         self.set_status_text("Loading Market Types",0)
         self.marketItems=self.walk_market_types('application/vnd.ccp.eve.MarketTypeCollection-v1+json; charset=utf-8');
         self.set_status_text("Select a region to continue.",0)
-              
-        
-    
+
+
+
     def get_endpoint(self,endpoint,accept,parameters=None):
         if self.settings['expires']<time.time():
             self.refresh_tokens()
@@ -230,7 +235,7 @@ class MarketModel:
         else:
             r = requests.get(endpoint,headers=headers,verify=self.cert_path)
         return r.json()
-    
+
     def walk_market_types(self,accept):
         returnCollection=[]
         url=self.settings['endPoints']['marketTypes']['href']
@@ -249,19 +254,19 @@ class MarketModel:
                 break
         self.set_status_text('',1)
         return returnCollection
-        
+
     def set_status_text(self,data,id):
         pub.sendMessage('update_status',data=data,extra1=id)
 
-    
+
 
 
 
 
 class MarketController:
-    
+
     def __init__(self,app,inifile):
-        
+
         self.view = MarketView(None, -1, "Market Loader")
 
         self.view.login.Bind(wx.EVT_BUTTON,self.on_login)
@@ -269,14 +274,14 @@ class MarketController:
         self.view.save.Bind(wx.EVT_BUTTON, self.on_save_dir)
         self.view.filter.Bind(wx.EVT_BUTTON, self.on_filter_file)
 
-        self.view.Show(True)        
+        self.view.Show(True)
         app.SetTopWindow(self.view)
         settings = ConfigParser.ConfigParser()
         settings.read(inifile)
         self.model=MarketModel(settings)
-        
+
         self.view.get_region.Bind(wx.EVT_BUTTON,self.model.get_region)
-        
+
         server = HTTPServer(('', settings.getint('Config','Port')), authHandler)
         server_thread = threading.Thread(target=server.serve_forever)
         server_thread.daemon = True
@@ -294,25 +299,25 @@ class MarketController:
         self.model.currentRegion=self.model.get_endpoint(selected['href'], 'application/vnd.ccp.eve.Region-v1+json; charset=utf-8')
         self.view.get_region.Enable()
         self.view.SetStatusText("Ready.",0)
-        
+
     def do_login_controller(self,message):
         self.view.login.Disable()
         self.model.do_login(message)
 
     def on_save_dir(self,event):
         self.model.directory=self.view.show_dir()
-    
+
     def on_filter_file(self,event):
         self.model.filterfile=self.view.select_filter_file()
-    
+
     def update_status_controller(self,data,extra1=0):
         self.view.update_status(data,extra1)
-    
+
     def get_region_controller(self,event):
         self.view.get_region.Disable()
         self.view.regionCombo.Disable()
         self.model.get_region()
-    
+
     def completed_dump(self,data):
         self.view.get_region.Enable()
         self.view.regionCombo.Enable()
