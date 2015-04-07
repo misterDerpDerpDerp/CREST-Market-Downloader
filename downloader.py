@@ -42,7 +42,7 @@ class MarketView(wx.Frame):
         self.panel = panel
         self.login=wx.Button(panel,id=wx.ID_ANY,label='Login')
         self.regionCombo = wx.ComboBox(panel,-1,"Login to populate regions",style=wx.CB_READONLY|wx.CB_SORT)
-        self.get_region=wx.Button(panel,id=wx.ID_ANY,label='Dump Region')
+        self.get_region=wx.Button(panel,id=wx.ID_ANY,label='Get Region Prices')
         self.save=wx.Button(panel,id=wx.ID_ANY,label='Export Location')
         self.filter=wx.Button(panel,id=wx.ID_ANY,label='Filter File')
         self.get_region.Disable()
@@ -162,10 +162,10 @@ class MarketModel:
                     writer.writerow(['bid','orderID','typeID','volRemaining','issued','duration','Volume Entered','minVolume','range','price','stationID','regionID','solarSystemID'])
                     if type in buy:
                         for buyitem in buy[type]:
-                            writer.writerow(['True',buyitem['id'],buyitem['type']['id'],buyitem['volume'],buyitem['issued'],buyitem['duration'],buyitem['volumeEntered'],buyitem['minVolume'],"-1",buyitem['price'],buyitem['location']['id'],buyitem['location']['name']])
+                            writer.writerow(['True',buyitem['id'],buyitem['type']['id'],buyitem['volume'],buyitem['issued'],buyitem['duration'],buyitem['volumeEntered'],buyitem['minVolume'],"-1",buyitem['price'],buyitem['location']['id'],regionx,solarx])
                     if type in sell:
                         for sellitem in sell[type]:
-                            writer.writerow(['False',sellitem['id'],sellitem['type']['id'],sellitem['volume'],sellitem['issued'],sellitem['duration'],sellitem['volumeEntered'],1,"-1",sellitem['price'],sellitem['location']['id'],sellitem['location']['name']])
+                            writer.writerow(['False',sellitem['id'],sellitem['type']['id'],sellitem['volume'],sellitem['issued'],sellitem['duration'],sellitem['volumeEntered'],1,"-1",sellitem['price'],sellitem['location']['id'],regionx,solarx])
         self.set_status_text("Complete.",0)
         self.set_status_text("",1)
         pub.sendMessage('completedDump',data='done')
@@ -295,10 +295,30 @@ class MarketController:
         webbrowser.open('https://login.eveonline.com/oauth/authorize?response_type=code&redirect_uri=http://localhost:'+`self.model.settings['PORT']`+'/&client_id='+self.model.settings['CLIENTID']+'&scope=publicData&state=')
 
     def on_region_select(self,event):
+        global regionx
+        global solarx
+        global selectedx
+        regionx = 1
+        solarx = 2
+        regionx = 3
+        selectedx = self.view.regionCombo.GetSelection()
+        print selectedx + solarx + regionx
+        if selectedx == 90:
+            regionx = 10000002
+            solarx = 30000142
+        elif selectedx == 37:
+            regionx = 10000043
+            solarx = 30002187
+        elif selectedx == 57:
+            regionx = 10000030
+            solarx = 30002510
+        elif selectedx == 81:
+            regionx = 10000032
+            solarx = 30002659
         selected=self.view.regionCombo.GetClientData(self.view.regionCombo.GetSelection())
         self.model.currentRegion=self.model.get_endpoint(selected['href'], 'application/vnd.ccp.eve.Region-v1+json; charset=utf-8')
         self.view.get_region.Enable()
-        self.view.SetStatusText("Ready.",0)
+        self.view.SetStatusText("Ready",0)
 
     def do_login_controller(self,message):
         self.view.login.Disable()
